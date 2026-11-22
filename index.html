@@ -122,11 +122,12 @@
   .caret {
     position: absolute;
     width: 2px;
-    height: 1.9em;
     background: var(--main);
     border-radius: 2px;
-    transition: left 0.07s, top 0.07s;
+    transition: left 0.06s linear, top 0.06s linear;
     animation: blink 1s infinite;
+    will-change: left, top;
+    z-index: 2;
   }
   @keyframes blink { 0%, 90% { opacity: 1; } 95%, 100% { opacity: 0; } }
 
@@ -334,17 +335,25 @@
     var wordEl = activeWordEl();
     if (!wordEl) { caret.style.opacity = "0"; return; }
     caret.style.opacity = "1";
+    var areaRect = typingArea.getBoundingClientRect();
     var letters = wordEl.querySelectorAll(".letter");
+    var r;
     if (state.input.length < letters.length) {
-      var t = letters[state.input.length];
-      caret.style.left = t.offsetLeft + "px";
+      r = letters[state.input.length].getBoundingClientRect();
+      caret.style.left = (r.left - areaRect.left) + "px";
     } else if (letters.length) {
       var last = letters[letters.length - 1];
-      caret.style.left = (last.offsetLeft + last.offsetWidth) + "px";
+      r = last.getBoundingClientRect();
+      caret.style.left = (r.right - areaRect.left) + "px";
     } else {
-      caret.style.left = wordEl.offsetLeft + "px";
+      r = wordEl.getBoundingClientRect();
+      caret.style.left = (r.left - areaRect.left) + "px";
     }
-    caret.style.top = (wordEl.offsetTop - wordsWrap.scrollTop + (wordEl.offsetHeight - caret.offsetHeight) / 2) + "px";
+    caret.style.top = (r.top - areaRect.top) + "px";
+    caret.style.height = r.height + "px";
+    caret.style.animation = "none";
+    void caret.offsetWidth;
+    caret.style.animation = "";
   }
 
   function updateLetters() {
@@ -530,6 +539,7 @@
     }
 
     if (e.key === " ") {
+      e.preventDefault();
       if (state.input.length) {
         state.totalKeystrokes++;
         state.correctKeystrokes++;
@@ -563,6 +573,8 @@
     typingArea.focus();
     typingArea.classList.remove("blurred");
   });
+
+  window.addEventListener("resize", positionCaret);
 
   function buildCountGroup() {
     var group = $("count-group");
